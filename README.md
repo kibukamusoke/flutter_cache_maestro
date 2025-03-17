@@ -2,7 +2,7 @@
 
 A Flutter plugin for efficiently caching data from various types of links such as images, videos, audio files, documents, and any downloadable content. Simplify your app's caching needs with a powerful, easy-to-use manager.
 
-<a href="https://www.buymeacoffee.com/trevorsuna" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 40px !important;width: 157px !important;" ></a>
+<a href="https://www.buymeacoffee.com/trevorsuna" target="_blank"><img src="https://firebasestorage.googleapis.com/v0/b/polaris-c4a50.appspot.com/o/trevorsuna%2Fbuymeabeer.png?alt=media&token=afe523cb-8699-4898-85c3-acbaf3a71031" alt="Buy Me A Coffee" style="height: 40px !important;width: 200px !important;" ></a>
 
 ## Features
 
