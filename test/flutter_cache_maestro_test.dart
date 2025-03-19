@@ -42,17 +42,17 @@ void main() {
   
   group('CacheManagerStats', () {
     test('formatBytes returns correct format', () {
-      expect(CacheManagerStats.formatBytes(0), equals('0 B'));
-      expect(CacheManagerStats.formatBytes(1023), equals('1023.00 B'));
-      expect(CacheManagerStats.formatBytes(1024), equals('1.00 KB'));
-      expect(CacheManagerStats.formatBytes(1048576), equals('1.00 MB'));
-      expect(CacheManagerStats.formatBytes(1073741824), equals('1.00 GB'));
+      expect(CacheManagerStats.formatBytesStatic(0), equals('0 B'));
+      expect(CacheManagerStats.formatBytesStatic(1023), equals('1023.00 B'));
+      expect(CacheManagerStats.formatBytesStatic(1024), equals('1.00 KB'));
+      expect(CacheManagerStats.formatBytesStatic(1048576), equals('1.00 MB'));
+      expect(CacheManagerStats.formatBytesStatic(1073741824), equals('1.00 GB'));
     });
     
     test('formatBytes respects decimals parameter', () {
-      expect(CacheManagerStats.formatBytes(1500, decimals: 0), equals('1 KB'));
-      expect(CacheManagerStats.formatBytes(1500, decimals: 1), equals('1.5 KB'));
-      expect(CacheManagerStats.formatBytes(1500, decimals: 2), equals('1.46 KB'));
+      expect(CacheManagerStats.formatBytesStatic(1500, decimals: 0), equals('1 KB'));
+      expect(CacheManagerStats.formatBytesStatic(1500, decimals: 1), equals('1.5 KB'));
+      expect(CacheManagerStats.formatBytesStatic(1500, decimals: 2), equals('1.46 KB'));
     });
   });
 }

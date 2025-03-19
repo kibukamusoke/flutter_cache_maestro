@@ -89,7 +89,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     if (_cacheStats != null) ...[
                       Text('Total Folders: ${_cacheStats!.folderCount}'),
                       Text(
-                        'Total Size: ${CacheManagerStats.formatBytes(_cacheStats!.totalSize)}',
+                        'Total Size: ${CacheManagerStats.formatBytesStatic(_cacheStats!.totalSize)}',
                       ),
                       const SizedBox(height: 8),
                       const Text('Folder Sizes:'),
@@ -97,7 +97,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         (entry) => Padding(
                           padding: const EdgeInsets.only(left: 16.0),
                           child: Text(
-                            '${entry.key}: ${CacheManagerStats.formatBytes(entry.value)}',
+                            '${entry.key}: ${CacheManagerStats.formatBytesStatic(entry.value)}',
                           ),
                         ),
                       )),
