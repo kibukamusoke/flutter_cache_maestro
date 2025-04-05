@@ -52,6 +52,7 @@ class CachedMediaWidgetState extends State<CachedMediaWidget> {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<File>(
+      key: ValueKey(widget.url), // This helps maintain state
       future: _fileFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {

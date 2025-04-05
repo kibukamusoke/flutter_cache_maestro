@@ -1,3 +1,7 @@
+## 0.1.6
+
+- Added a key to futurebuilder to maintain the state of the widget
+
 ## 0.1.5
 
 - Updated http package version to the latest version 1.3.0
