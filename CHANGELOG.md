@@ -1,6 +1,7 @@
-## 0.1.6
+## 0.1.7
 
 - Added a key to futurebuilder to maintain the state of the widget
+- fixed a bug in stats extension where static calling was failing
 
 ## 0.1.5
 

@@ -2,8 +2,16 @@ import 'package:flutter_cache_maestro/src/managers/cache_manager.dart';
 import 'package:flutter_cache_maestro/src/models/cache_stats.dart';
 import 'package:flutter_cache_maestro/src/utils/file_utils.dart';
 
+// Class for cache statistics utilities
+class CacheManagerStats {
+  // Static format bytes method
+  static String formatBytes(int bytes, {int decimals = 2}) {
+    return FileUtils.formatBytes(bytes, decimals: decimals);
+  }
+}
+
 // Extension for getting cache statistics
-extension CacheManagerStats on CacheManager {
+extension CacheManagerExtension on CacheManager {
   // Get statistics about the cache
   Future<CacheStats> getCacheStats() async {
     final folders = await getAllFolders();
@@ -21,15 +29,5 @@ extension CacheManagerStats on CacheManager {
       folderSizes: folderSizes,
       totalSize: totalSize,
     );
-  }
-
-  // Format bytes to a human-readable format
-  String formatBytes(int bytes, {int decimals = 2}) {
-    return FileUtils.formatBytes(bytes, decimals: decimals);
-  }
-
-  // Static format bytes method for backward compatibility
-  static String formatBytesStatic(int bytes, {int decimals = 2}) {
-    return FileUtils.formatBytes(bytes, decimals: decimals);
   }
 }
