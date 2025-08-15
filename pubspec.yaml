@@ -1,6 +1,6 @@
 name: flutter_cache_maestro
 description: A Flutter plugin for caching data from various types of links (images, videos, audio, documents) with customizable storage options.
-version: 0.1.8
+version: 0.1.9
 homepage: https://github.com/kibukamusoke/flutter_cache_maestro
 
 environment:
@@ -11,9 +11,9 @@ dependencies:
   flutter:
     sdk: flutter
   http: ^1.3.0
-  path_provider: ^2.0.2
-  path: ^1.8.0
-  crypto: ^3.0.1
+  path_provider: ^2.1.5
+  path: ^1.9.1
+  crypto: ^3.0.6
 
 dev_dependencies:
   flutter_test:
