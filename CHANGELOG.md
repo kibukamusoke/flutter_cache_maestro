@@ -1,3 +1,10 @@
+## 0.1.9
+
+- Updated dependency versions to latest compatible versions
+- Updated path_provider to ^2.1.5
+- Updated path to ^1.9.1
+- Updated crypto to ^3.0.6
+
 ## 0.1.8
 
 - Added a key to futurebuilder to maintain the state of the widget
