@@ -401,6 +401,29 @@ void main() {
       expect(isCached('f', 'https://cdn.test/4.jpg'), isTrue); // most recent
     });
 
+    test('pinned files are evicted last when the limit overrides pins',
+        () async {
+      final old = _now() - 10000;
+      writeEntry('f', 'https://cdn.test/p1.jpg', '1' * 400,
+          fetchedAt: old, lastAccessedAt: old, pinned: true);
+      writeEntry('f', 'https://cdn.test/p2.jpg', '2' * 400,
+          fetchedAt: old, lastAccessedAt: old + 5, pinned: true);
+      writeEntry('f', 'https://cdn.test/u.jpg', '3' * 400,
+          fetchedAt: old, lastAccessedAt: old + 10);
+
+      // 1200 bytes, limit 600: target 540. Without the override only the
+      // unpinned file could go.
+      manager.setMaxCacheSize(600);
+      await manager.trimToMaxSize();
+      expect(isCached('f', 'https://cdn.test/u.jpg'), isFalse);
+      expect(isCached('f', 'https://cdn.test/p1.jpg'), isTrue);
+
+      manager.setMaxCacheSize(600, overridePins: true);
+      await manager.trimToMaxSize();
+      expect(isCached('f', 'https://cdn.test/p1.jpg'), isFalse); // oldest pin
+      expect(isCached('f', 'https://cdn.test/p2.jpg'), isTrue);
+    });
+
     test('a file being used is not evicted', () async {
       final old = _now() - 10000;
       writeEntry('f', 'https://cdn.test/1.jpg', '1' * 400,

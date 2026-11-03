@@ -184,6 +184,11 @@ await CacheManager().init(maxCacheSize: 1024 * 1024 * 1024); // 1 GB
 
 Past the limit, the least recently used unpinned files are removed until the cache is under 90% of it.
 
+```dart
+// Let the limit win over pins when pinned files alone exceed it
+CacheManager().setMaxCacheSize(1024 * 1024 * 1024, overridePins: true);
+```
+
 ### Group files with tags
 
 ```dart

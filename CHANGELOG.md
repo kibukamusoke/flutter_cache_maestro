@@ -1,3 +1,10 @@
+## 0.2.1
+
+- `setMaxCacheSize(bytes, overridePins: true)` / `init(limitOverridesPins:
+  true)`: when unpinned files alone can't bring the cache under the limit,
+  the least recently used pinned files are removed too, so the limit always
+  holds. Off by default: pinned files stay protected.
+
 ## 0.2.0
 
 - **The cache moved out of device backups.** iOS: Application Support,

@@ -4,7 +4,7 @@
 #
 Pod::Spec.new do |s|
   s.name             = 'flutter_cache_maestro'
-  s.version          = '0.2.0'
+  s.version          = '0.2.1'
   s.summary          = 'Offline-first file cache for Flutter.'
   s.description      = <<-DESC
 Keeps the flutter_cache_maestro cache directory out of iCloud backups.

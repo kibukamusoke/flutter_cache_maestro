@@ -42,6 +42,7 @@ class CacheManager {
   int _defaultTTL = 86400; // Default TTL: 1 day in seconds
   bool _redownloadEnabled = false;
   int? _maxCacheSize;
+  bool _limitOverridesPins = false;
   Duration _connectTimeout = const Duration(seconds: 20);
   Duration _idleTimeout = const Duration(seconds: 30);
   http.Client _client = http.Client();
@@ -68,6 +69,7 @@ class CacheManager {
     int? defaultTTL,
     bool? redownloadEnabled,
     int? maxCacheSize,
+    bool? limitOverridesPins,
     Duration? connectTimeout,
     Duration? idleTimeout,
   }) async {
@@ -81,6 +83,10 @@ class CacheManager {
 
     if (maxCacheSize != null) {
       _maxCacheSize = maxCacheSize;
+    }
+
+    if (limitOverridesPins != null) {
+      _limitOverridesPins = limitOverridesPins;
     }
 
     if (connectTimeout != null) {
@@ -117,6 +123,7 @@ class CacheManager {
     _defaultTTL = 86400;
     _redownloadEnabled = false;
     _maxCacheSize = null;
+    _limitOverridesPins = false;
     _connectTimeout = const Duration(seconds: 20);
     _idleTimeout = const Duration(seconds: 30);
     _client = http.Client();
@@ -135,8 +142,7 @@ class CacheManager {
   Future<Directory> _getBaseDirectory() {
     final override = _baseDirectoryOverride;
     if (override != null) {
-      return Future.value(
-          Directory(path.join(override.path, _baseFolderName)));
+      return Future.value(Directory(path.join(override.path, _baseFolderName)));
     }
     return _baseDirectory ??= _resolveBaseDirectory();
   }
@@ -371,10 +377,11 @@ class CacheManager {
     if (previous != null && cachedFile != null) {
       final etag = previous.etag;
       final lastModified = previous.lastModified;
-      if (etag != null) request.headers.putIfAbsent('If-None-Match', () => etag);
+      if (etag != null) {
+        request.headers.putIfAbsent('If-None-Match', () => etag);
+      }
       if (lastModified != null) {
-        request.headers
-            .putIfAbsent('If-Modified-Since', () => lastModified);
+        request.headers.putIfAbsent('If-Modified-Since', () => lastModified);
       }
     }
 
@@ -550,8 +557,8 @@ class CacheManager {
         if (entity is! File || !entity.path.endsWith(_metadataSuffix)) {
           continue;
         }
-        final folder = path.relative(path.dirname(entity.path),
-            from: baseDir.path);
+        final folder =
+            path.relative(path.dirname(entity.path), from: baseDir.path);
         if (folder == '.') continue;
         try {
           var entry = CacheEntry.tryDecode(await entity.readAsString());
@@ -696,8 +703,14 @@ class CacheManager {
   /// Sets the cache size limit in bytes, or removes it with null. When the
   /// cache grows past it, the least recently used unpinned files are removed
   /// until it is back under 90% of the limit.
-  void setMaxCacheSize(int? bytes) {
+  ///
+  /// With [overridePins], pinned files are removed too (least recently used
+  /// first) when unpinned files alone can't bring the cache under the limit,
+  /// so the limit always holds. Pins then only protect against TTL cleanup.
+  /// Null leaves the current setting.
+  void setMaxCacheSize(int? bytes, {bool? overridePins}) {
     _maxCacheSize = bytes;
+    if (overridePins != null) _limitOverridesPins = overridePins;
   }
 
   /// Applies the size limit now. Also runs after each download and during
@@ -717,12 +730,18 @@ class CacheManager {
 
     final target = maxSize * 9 ~/ 10;
     final now = _nowSeconds();
-    final candidates = index.entries
-        .where((e) =>
-            !e.value.pinned && now - e.value.lastAccessedAt > _evictionGrace)
-        .toList()
-      ..sort(
-          (a, b) => a.value.lastAccessedAt.compareTo(b.value.lastAccessedAt));
+    int byLastUse(
+            MapEntry<String, CacheEntry> a, MapEntry<String, CacheEntry> b) =>
+        a.value.lastAccessedAt.compareTo(b.value.lastAccessedAt);
+    final evictable = index.entries
+        .where((e) => now - e.value.lastAccessedAt > _evictionGrace)
+        .toList();
+    // Unpinned files first; pinned ones only if allowed and still needed.
+    final candidates = [
+      ...evictable.where((e) => !e.value.pinned).toList()..sort(byLastUse),
+      if (_limitOverridesPins)
+        ...evictable.where((e) => e.value.pinned).toList()..sort(byLastUse),
+    ];
 
     final baseDir = await _getBaseDirectory();
     var removed = 0;
@@ -832,8 +851,7 @@ class CacheManager {
   Future<void> _removeExpiredFiles() async {
     final baseDir = await _getBaseDirectory();
     if (await baseDir.exists()) {
-      final removed =
-          await _cleanDirectory(baseDir, baseDir, _nowSeconds());
+      final removed = await _cleanDirectory(baseDir, baseDir, _nowSeconds());
       if (removed > 0) _generation++;
     }
     await trimToMaxSize();
