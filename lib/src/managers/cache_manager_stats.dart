@@ -8,6 +8,11 @@ class CacheManagerStats {
   static String formatBytes(int bytes, {int decimals = 2}) {
     return FileUtils.formatBytes(bytes, decimals: decimals);
   }
+
+  // Alias of [formatBytes], kept for code written against older versions
+  static String formatBytesStatic(int bytes, {int decimals = 2}) {
+    return FileUtils.formatBytes(bytes, decimals: decimals);
+  }
 }
 
 // Extension for getting cache statistics

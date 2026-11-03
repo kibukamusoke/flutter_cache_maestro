@@ -9,7 +9,8 @@ A Flutter plugin for efficiently caching data from various types of links such a
 - Cache files from any URL with minimal memory footprint
 - Organize cached files in custom folders
 - Get folder sizes and manage storage space
-- Set global Time-To-Live (TTL) for automatic cache expiration
+- Offline-first: expired files are refreshed when possible and still served when the device is offline
+- Set global Time-To-Live (TTL) for refreshing, and clean up files that are no longer used
 - Toggle between using cached files or redownloading them
 - Ready-to-use widgets for displaying cached content
 - Support for various media types (images, videos, PDFs, etc.)
@@ -33,10 +34,8 @@ flutter pub get
 
 ## Requirements
 
-- Flutter 2.0.0 or higher
-- Dart 2.12.0 or higher (null safety support)
-- Android: minSdkVersion 16
-- iOS: iOS 9.0 or higher
+- Flutter 3.22.0 or higher
+- Dart 3.4.0 or higher
 
 ## Basic Usage
 
@@ -87,7 +86,8 @@ CachedMediaWidget(
 final File file = await CacheManager().getFile(
   'https://example.com/data.json',
   folderName: 'api_responses',
-  ttl: 3600, // Override TTL for this file (1 hour)
+  ttl: 3600, // Refresh after 1 hour (override the default TTL)
+  headers: {'Authorization': 'Bearer $token'}, // Optional
 );
 
 // Now use the file
@@ -163,12 +163,19 @@ class CachedVideo extends StatelessWidget {
 }
 ```
 
+## How TTL and cleanup work
+
+- **TTL means "refresh after".** A file younger than its TTL is served without a network request. An older file is downloaded again; if that fails (offline, timeout, server error), the old copy is served instead. `getFile` only throws a `CacheMaestroException` when there is no copy at all.
+- **Cleanup removes unused files.** Files that haven't been used for longer than the default TTL (or their own TTL, if longer) are deleted. Cleanup runs 30 seconds after `init()`, then every 12 hours, or whenever you call `CacheManager().removeExpiredFiles()`.
+- Concurrent requests for the same URL share one download.
+
 ## Performance Considerations
 
-- The plugin automatically cleans up expired files in the background
+- Downloads stream straight to disk, so large videos don't fill memory
+- Files are written to a temporary `.part` file and renamed when complete, so an interrupted download never leaves a broken file
+- Files are named by a hash of the URL; metadata (JSON) is stored next to each file
 - Files are stored in the application's documents directory
-- Metadata is stored alongside each file to track creation time
-- Cache operations run asynchronously to avoid blocking the UI thread
+- Timeouts are configurable: `init(connectTimeout: ..., idleTimeout: ...)`
 
 ## Example App
 

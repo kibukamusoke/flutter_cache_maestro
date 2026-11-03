@@ -1,3 +1,37 @@
+## 0.1.10
+
+- Cached files are now named by a SHA-256 of the URL, so URLs that share a
+  filename (`a/photo.jpg`, `b/photo.jpg`) no longer overwrite each other.
+  Files cached by older versions are migrated the first time they are
+  requested, and refreshed once the device is online.
+- Downloads stream to disk instead of loading the whole file into memory, and
+  are written to a `.part` file and renamed into place, so a killed app never
+  leaves a truncated file behind. Downloads shorter than `Content-Length` are
+  rejected.
+- The TTL now decides when a file is refreshed, not when it is deleted. An
+  expired file is still served when a new copy can't be downloaded (offline,
+  timeout, server error). Cleanup removes files that haven't been used for
+  longer than the TTL (or the file's own TTL, if longer), including files in
+  nested folders and leftovers from interrupted downloads.
+- Cleanup runs 30 seconds after `init()` and then every 12 hours; calling
+  `init()` again no longer starts extra timers. Run it on demand with
+  `removeExpiredFiles()`.
+- Concurrent `getFile` calls for the same URL share one download.
+- New: `headers` on `getFile`, `CachedMediaWidget` and `CachedImage`;
+  `connectTimeout` and `idleTimeout` on `init()` (defaults 20 s / 30 s).
+- New: `CacheMaestroException` (with `statusCode`) when a download fails and
+  nothing is cached.
+- Cached files get an extension from `Content-Type` when the URL has none.
+- `CachedMediaWidget` loads the new file when its URL changes, forgets failed
+  loads so the next build retries, keeps at most 200 lookups in memory, and
+  stops serving files removed by a clear or cleanup. The default error widget
+  is an icon instead of the raw error text.
+- Folder names can no longer point outside the cache directory (`..`).
+- `getFolderSize` and `clearFolder` no longer create the folder.
+- Corrupt metadata no longer makes `getFile` throw.
+- `FileUtils.generateFilename` is deprecated.
+- Requires Dart 3.4 / Flutter 3.22 (already required by `http ^1.3.0`).
+
 ## 0.1.9
 
 - Updated dependency versions to latest compatible versions

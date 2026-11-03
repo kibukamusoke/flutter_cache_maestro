@@ -7,6 +7,7 @@ export 'src/managers/cache_manager.dart';
 export 'src/managers/cache_manager_stats.dart';
 
 // Models
+export 'src/models/cache_exception.dart';
 export 'src/models/cache_stats.dart';
 
 // Widgets

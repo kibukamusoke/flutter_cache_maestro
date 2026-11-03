@@ -12,6 +12,9 @@ class CachedImage extends StatelessWidget {
   // Optional time-to-live in seconds
   final int? ttl;
 
+  // Optional HTTP headers sent when downloading (e.g. Authorization)
+  final Map<String, String>? headers;
+
   // Optional BoxFit for the image
   final BoxFit? fit;
 
@@ -32,6 +35,7 @@ class CachedImage extends StatelessWidget {
     required this.url,
     this.folderName,
     this.ttl,
+    this.headers,
     this.fit,
     this.width,
     this.height,
@@ -45,6 +49,7 @@ class CachedImage extends StatelessWidget {
       url: url,
       folderName: folderName,
       ttl: ttl,
+      headers: headers,
       placeholder: placeholder,
       errorWidget: errorWidget,
       builder: (context, file) {
