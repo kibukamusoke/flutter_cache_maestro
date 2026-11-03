@@ -33,6 +33,7 @@ extension CacheManagerExtension on CacheManager {
       folderCount: folders.length,
       folderSizes: folderSizes,
       totalSize: totalSize,
+      pinnedSize: await getPinnedSize(),
     );
   }
 }

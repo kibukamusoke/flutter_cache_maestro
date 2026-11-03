@@ -39,7 +39,11 @@ void main() {
   }
 
   void writeEntry(String folder, String url, String content,
-      {required int fetchedAt, required int lastAccessedAt, int? ttl}) {
+      {required int fetchedAt,
+      required int lastAccessedAt,
+      int? ttl,
+      bool pinned = false,
+      List<String> tags = const []}) {
     final key = FileUtils.cacheKey(url);
     final dir = Directory(path.join(cacheDir.path, folder))
       ..createSync(recursive: true);
@@ -51,8 +55,15 @@ void main() {
       'fetchedAt': fetchedAt,
       'lastAccessedAt': lastAccessedAt,
       if (ttl != null) 'ttl': ttl,
+      'size': content.length,
+      if (pinned) 'pinned': true,
+      if (tags.isNotEmpty) 'tags': tags,
     }));
   }
+
+  bool isCached(String folder, String url) => File(path.join(
+          cacheDir.path, folder, '${FileUtils.cacheKey(url)}.jpg'))
+      .existsSync();
 
   setUp(() {
     tempDir = Directory.systemTemp.createTempSync('cache_maestro_test');
@@ -276,6 +287,176 @@ void main() {
 
       expect(part.existsSync(), isFalse);
       expect(legacy.existsSync(), isFalse);
+    });
+  });
+
+  group('revalidation', () {
+    test('keeps the file on 304 Not Modified and resets its age', () async {
+      const url = 'https://cdn.test/x.jpg';
+      var version = 'v1';
+      useServer((request) async {
+        if (request.headers['If-None-Match'] == '"$version"') {
+          return http.Response('', 304, headers: {'etag': '"$version"'});
+        }
+        return http.Response('content-$version', 200,
+            headers: {'etag': '"$version"'});
+      });
+
+      final first = await manager.getFile(url);
+      final second = await manager.getFile(url, ttl: 0); // expired: revalidate
+      expect(requests.last.headers['If-None-Match'], '"v1"');
+      expect(second.path, first.path);
+      expect(await second.readAsString(), 'content-v1');
+
+      await manager.getFile(url, ttl: 100); // fresh again after the 304
+      expect(requests, hasLength(2));
+
+      version = 'v2'; // changed on the server
+      final third = await manager.getFile(url, ttl: 0);
+      expect(await third.readAsString(), 'content-v2');
+    });
+  });
+
+  group('cacheKey', () {
+    test('different URLs with one cacheKey share a file', () async {
+      final a = await manager.getFile('https://cdn.test/x.jpg?sig=1',
+          cacheKey: 'media-1');
+      final b = await manager.getFile('https://cdn.test/x.jpg?sig=2',
+          cacheKey: 'media-1');
+      expect(requests, hasLength(1));
+      expect(b.path, a.path);
+    });
+  });
+
+  group('tags and pinning', () {
+    test('tags accumulate, size by tag, clear by tag', () async {
+      await manager.getFile('https://cdn.test/a.jpg', tags: {'farm:1'});
+      await manager.getFile('https://cdn.test/a.jpg', tags: {'video'});
+      await manager.getFile('https://cdn.test/b.jpg', tags: {'farm:2'});
+
+      expect(await manager.getTagSize('farm:1'), 'body:/a.jpg'.length);
+      expect(await manager.getTagSize('video'), 'body:/a.jpg'.length);
+
+      await manager.clearTag('farm:1');
+
+      expect(await manager.getTagSize('farm:1'), 0);
+      expect(isCached('default', 'https://cdn.test/a.jpg'), isFalse);
+      expect(isCached('default', 'https://cdn.test/b.jpg'), isTrue);
+    });
+
+    test('setPinned reports whether the file is cached', () async {
+      const url = 'https://cdn.test/a.jpg';
+      expect(await manager.setPinned(url, pinned: true), isFalse);
+      await manager.getFile(url);
+      expect(await manager.setPinned(url, pinned: true), isTrue);
+      expect(await manager.getPinnedSize(), 'body:/a.jpg'.length);
+
+      await manager.unpinAll();
+      expect(await manager.getPinnedSize(), 0);
+    });
+
+    test('setTagPinned pins and unpins every file with the tag', () async {
+      await manager.getFile('https://cdn.test/a.jpg', tags: {'farm:1'});
+      await manager.getFile('https://cdn.test/b.jpg', tags: {'farm:2'});
+
+      await manager.setTagPinned('farm:1', pinned: true);
+      expect(await manager.getPinnedSize(), 'body:/a.jpg'.length);
+
+      await manager.setTagPinned('farm:1', pinned: false);
+      expect(await manager.getPinnedSize(), 0);
+    });
+
+    test('pinned files survive cleanup', () async {
+      manager.setDefaultTTL(100);
+      const url = 'https://cdn.test/pinned.jpg';
+      writeEntry('default', url, 'p',
+          fetchedAt: _now() - 10000,
+          lastAccessedAt: _now() - 10000,
+          pinned: true);
+
+      await manager.removeExpiredFiles();
+
+      expect(isCached('default', url), isTrue);
+    });
+  });
+
+  group('size limit', () {
+    test('evicts least recently used unpinned files first', () async {
+      final old = _now() - 10000;
+      writeEntry('f', 'https://cdn.test/1.jpg', '1' * 400,
+          fetchedAt: old, lastAccessedAt: old + 1);
+      writeEntry('f', 'https://cdn.test/2.jpg', '2' * 400,
+          fetchedAt: old, lastAccessedAt: old, pinned: true);
+      writeEntry('f', 'https://cdn.test/3.jpg', '3' * 400,
+          fetchedAt: old, lastAccessedAt: old + 2);
+      writeEntry('f', 'https://cdn.test/4.jpg', '4' * 400,
+          fetchedAt: old, lastAccessedAt: old + 3);
+
+      manager.setMaxCacheSize(1000); // 1600 bytes cached: trim to <= 900
+      await manager.trimToMaxSize();
+
+      expect(isCached('f', 'https://cdn.test/1.jpg'), isFalse); // oldest
+      expect(isCached('f', 'https://cdn.test/2.jpg'), isTrue); // pinned
+      expect(isCached('f', 'https://cdn.test/3.jpg'), isFalse);
+      expect(isCached('f', 'https://cdn.test/4.jpg'), isTrue); // most recent
+    });
+
+    test('a file being used is not evicted', () async {
+      final old = _now() - 10000;
+      writeEntry('f', 'https://cdn.test/1.jpg', '1' * 400,
+          fetchedAt: old, lastAccessedAt: old);
+      manager.setMaxCacheSize(500);
+
+      // Downloaded now, so in its grace period; the old file goes instead.
+      await manager.getFile('https://cdn.test/new.jpg',
+          folderName: 'f'); // 'body:/new.jpg'
+      writeEntry('f', 'https://cdn.test/2.jpg', '2' * 400,
+          fetchedAt: _now(), lastAccessedAt: _now());
+      await manager.removeExpiredFiles(); // rebuilds nothing; trims
+
+      expect(isCached('f', 'https://cdn.test/1.jpg'), isFalse);
+      expect(isCached('f', 'https://cdn.test/2.jpg'), isTrue);
+    });
+  });
+
+  group('moveCacheDirectory', () {
+    test('renames the old directory when the new one does not exist',
+        () async {
+      final from = Directory(path.join(tempDir.path, 'docs', 'cache'))
+        ..createSync(recursive: true);
+      File(path.join(from.path, 'farm', 'a.jpg'))
+        ..createSync(recursive: true)
+        ..writeAsStringSync('a');
+      final to = Directory(path.join(tempDir.path, 'support', 'cache'));
+
+      final result = await CacheManager.moveCacheDirectory(from, to);
+
+      expect(result.path, to.path);
+      expect(File(path.join(to.path, 'farm', 'a.jpg')).readAsStringSync(),
+          'a');
+      expect(from.existsSync(), isFalse);
+    });
+
+    test('merges folders the new directory lacks', () async {
+      final from = Directory(path.join(tempDir.path, 'docs', 'cache'));
+      File(path.join(from.path, 'farmA', 'a.jpg'))
+        ..createSync(recursive: true)
+        ..writeAsStringSync('old-a');
+      File(path.join(from.path, 'farmB', 'b.jpg'))
+        ..createSync(recursive: true)
+        ..writeAsStringSync('b');
+      final to = Directory(path.join(tempDir.path, 'support', 'cache'));
+      File(path.join(to.path, 'farmA', 'a.jpg'))
+        ..createSync(recursive: true)
+        ..writeAsStringSync('new-a');
+
+      await CacheManager.moveCacheDirectory(from, to);
+
+      expect(File(path.join(to.path, 'farmA', 'a.jpg')).readAsStringSync(),
+          'new-a');
+      expect(File(path.join(to.path, 'farmB', 'b.jpg')).readAsStringSync(),
+          'b');
+      expect(from.existsSync(), isFalse);
     });
   });
 

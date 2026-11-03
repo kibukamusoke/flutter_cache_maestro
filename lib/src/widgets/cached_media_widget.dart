@@ -62,6 +62,16 @@ class CachedMediaWidget extends StatefulWidget {
   // Optional HTTP headers sent when downloading (e.g. Authorization)
   final Map<String, String>? headers;
 
+  // Optional stable key used instead of the URL (e.g. a media id, for
+  // signed URLs that change)
+  final String? cacheKey;
+
+  // Optional tags added to the cached file, e.g. {'farm:123'}
+  final Set<String>? tags;
+
+  // Optional: true pins the file (kept offline), false unpins it
+  final bool? pin;
+
   // Builder function to create widget from cached file
   final Widget Function(BuildContext, File) builder;
 
@@ -77,6 +87,9 @@ class CachedMediaWidget extends StatefulWidget {
     this.folderName,
     this.ttl,
     this.headers,
+    this.cacheKey,
+    this.tags,
+    this.pin,
     required this.builder,
     this.placeholder,
     this.errorWidget,
@@ -100,6 +113,7 @@ class CachedMediaWidgetState extends State<CachedMediaWidget> {
     super.didUpdateWidget(oldWidget);
     // Lists reuse this state for different items; load the new URL.
     if (oldWidget.url != widget.url ||
+        oldWidget.cacheKey != widget.cacheKey ||
         oldWidget.folderName != widget.folderName ||
         oldWidget.ttl != widget.ttl) {
       _entry = _resolve();
@@ -108,7 +122,7 @@ class CachedMediaWidgetState extends State<CachedMediaWidget> {
 
   _MemoEntry _resolve() {
     final cacheKey =
-        '${widget.url}|${widget.folderName ?? "default"}|${widget.ttl ?? 0}';
+        '${widget.cacheKey ?? widget.url}|${widget.folderName ?? "default"}|${widget.ttl ?? 0}';
     return _lookup(
       cacheKey,
       () => CacheManager().getFile(
@@ -116,6 +130,9 @@ class CachedMediaWidgetState extends State<CachedMediaWidget> {
         folderName: widget.folderName,
         ttl: widget.ttl,
         headers: widget.headers,
+        cacheKey: widget.cacheKey,
+        tags: widget.tags,
+        pin: widget.pin,
       ),
     );
   }

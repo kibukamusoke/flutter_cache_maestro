@@ -1,3 +1,27 @@
+## 0.2.0
+
+- **The cache moved out of device backups.** iOS: Application Support,
+  excluded from iCloud backup (new native iOS code). Android: `no_backup`.
+  The old cache in the documents directory is moved on first launch, so
+  offline files are kept.
+- **Size limit:** `init(maxCacheSize: bytes)` / `setMaxCacheSize`. When the
+  cache grows past it, the least recently used unpinned files are removed
+  until it is under 90% of the limit. Runs after downloads and during
+  cleanup, or call `trimToMaxSize()`.
+- **Pinning:** `getFile(pin: true)`, `setPinned`, `setTagPinned`, `unpinAll`,
+  `getPinnedSize`. Pinned files are never removed by cleanup or the size
+  limit, only by an explicit clear.
+- **Tags:** `getFile(tags: {'farm:123'})`, `getTagSize`, `clearTag`.
+- **Cache keys:** `getFile(cacheKey: 'media-id')` identifies a file
+  independently of its URL (e.g. signed URLs that change).
+- **Conditional requests:** expired files are revalidated with
+  `If-None-Match` / `If-Modified-Since`; a `304 Not Modified` keeps the
+  cached file without downloading it again.
+- `CachedMediaWidget` and `CachedImage` accept `cacheKey`, `tags` and `pin`.
+- `CacheStats.pinnedSize`.
+- An in-memory index (built from the metadata files on first use) serves
+  tag, pin and size-limit queries.
+
 ## 0.1.10
 
 - Cached files are now named by a SHA-256 of the URL, so URLs that share a

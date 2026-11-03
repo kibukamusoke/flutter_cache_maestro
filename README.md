@@ -163,10 +163,51 @@ class CachedVideo extends StatelessWidget {
 }
 ```
 
+## Offline-first storage
+
+### Pin what the user needs offline
+
+```dart
+// Kept until you unpin or clear it: never removed by cleanup or the size limit
+await CacheManager().getFile(url, folderName: 'farm_42', pin: true);
+
+await CacheManager().setPinned(url, folderName: 'farm_42', pinned: false);
+await CacheManager().setTagPinned('farm:42', pinned: true); // a whole group
+await CacheManager().unpinAll(tag: 'farm:42');
+```
+
+### Limit the cache size
+
+```dart
+await CacheManager().init(maxCacheSize: 1024 * 1024 * 1024); // 1 GB
+```
+
+Past the limit, the least recently used unpinned files are removed until the cache is under 90% of it.
+
+### Group files with tags
+
+```dart
+CachedImage(url: url, tags: {'farm:42', 'activity'});
+
+final bytes = await CacheManager().getTagSize('farm:42');
+await CacheManager().clearTag('farm:42'); // removes pinned files too
+```
+
+### Stable keys for changing URLs
+
+```dart
+// Signed URLs change, the file doesn't: cache it under the media id
+CachedImage(url: signedUrl, cacheKey: media.id);
+```
+
+### Where files are stored
+
+The cache is kept out of device backups: Application Support excluded from iCloud backup on iOS, and `no_backup` on Android. Versions before 0.2.0 used the documents directory; that cache is moved on first launch.
+
 ## How TTL and cleanup work
 
-- **TTL means "refresh after".** A file younger than its TTL is served without a network request. An older file is downloaded again; if that fails (offline, timeout, server error), the old copy is served instead. `getFile` only throws a `CacheMaestroException` when there is no copy at all.
-- **Cleanup removes unused files.** Files that haven't been used for longer than the default TTL (or their own TTL, if longer) are deleted. Cleanup runs 30 seconds after `init()`, then every 12 hours, or whenever you call `CacheManager().removeExpiredFiles()`.
+- **TTL means "refresh after".** A file younger than its TTL is served without a network request. An older file is checked with the server (`If-None-Match` / `If-Modified-Since`, so an unchanged file isn't downloaded again); if that fails (offline, timeout, server error), the old copy is served instead. `getFile` only throws a `CacheMaestroException` when there is no copy at all.
+- **Cleanup removes unused files.** Unpinned files that haven't been used for longer than the default TTL (or their own TTL, if longer) are deleted. Cleanup runs 30 seconds after `init()`, then every 12 hours, or whenever you call `CacheManager().removeExpiredFiles()`.
 - Concurrent requests for the same URL share one download.
 
 ## Performance Considerations
@@ -174,7 +215,6 @@ class CachedVideo extends StatelessWidget {
 - Downloads stream straight to disk, so large videos don't fill memory
 - Files are written to a temporary `.part` file and renamed when complete, so an interrupted download never leaves a broken file
 - Files are named by a hash of the URL; metadata (JSON) is stored next to each file
-- Files are stored in the application's documents directory
 - Timeouts are configurable: `init(connectTimeout: ..., idleTimeout: ...)`
 
 ## Example App

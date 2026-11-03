@@ -15,6 +15,15 @@ class CachedImage extends StatelessWidget {
   // Optional HTTP headers sent when downloading (e.g. Authorization)
   final Map<String, String>? headers;
 
+  // Optional stable key used instead of the URL (e.g. a media id)
+  final String? cacheKey;
+
+  // Optional tags added to the cached file, e.g. {'farm:123'}
+  final Set<String>? tags;
+
+  // Optional: true pins the file (kept offline), false unpins it
+  final bool? pin;
+
   // Optional BoxFit for the image
   final BoxFit? fit;
 
@@ -36,6 +45,9 @@ class CachedImage extends StatelessWidget {
     this.folderName,
     this.ttl,
     this.headers,
+    this.cacheKey,
+    this.tags,
+    this.pin,
     this.fit,
     this.width,
     this.height,
@@ -50,6 +62,9 @@ class CachedImage extends StatelessWidget {
       folderName: folderName,
       ttl: ttl,
       headers: headers,
+      cacheKey: cacheKey,
+      tags: tags,
+      pin: pin,
       placeholder: placeholder,
       errorWidget: errorWidget,
       builder: (context, file) {
